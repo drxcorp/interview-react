@@ -9,12 +9,23 @@ export const Cart = ({ onCheckout }: CartProps) => {
   const { items, updateQuantity, removeItem, getTotal } = useCartStore();
   const [isOpen, setIsOpen] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<number | null>(null);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
 
   useEffect(() => {
     if (items.length === 0) {
       setIsOpen(false);
     }
   }, [items.length]);
+
+  useEffect(() => {
+    const saveCart = () => {
+      localStorage.setItem('cart', JSON.stringify(items));
+      setLastSaved(new Date().toLocaleTimeString());
+    };
+
+    const intervalId = setInterval(saveCart, 5000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const handleRemoveItem = (id: number) => {
     setRemovingItemId(id);
@@ -57,8 +68,7 @@ export const Cart = ({ onCheckout }: CartProps) => {
           transition: 'transform 0.2s',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative'
+          justifyContent: 'center'
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)';
@@ -264,6 +274,11 @@ export const Cart = ({ onCheckout }: CartProps) => {
                     {shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}
                   </span>
                 </div>
+                {lastSaved && (
+                  <p style={{ fontSize: '11px', color: '#999', margin: '8px 0 0 0' }}>
+                    Auto-saved at {lastSaved}
+                  </p>
+                )}
                 {subtotal > 0 && subtotal < 100 && (
                   <p style={{ fontSize: '12px', color: '#22c55e', margin: '8px 0 0 0' }}>
                     Add ${(100 - subtotal).toFixed(2)} more for free shipping!

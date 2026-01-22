@@ -44,11 +44,12 @@ export const useCartStore = create<CartStore>((set, get) => ({
       return;
     }
 
-    set({
-      items: get().items.map(item =>
-        item.id === productId ? { ...item, quantity } : item
-      )
-    });
+    const items = get().items;
+    const item = items.find(i => i.id === productId);
+    if (item) {
+      item.quantity = quantity;
+      set({ items });
+    }
   },
 
   clearCart: () => set({ items: [] }),

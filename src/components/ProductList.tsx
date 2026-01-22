@@ -6,39 +6,51 @@ interface ProductListProps {
   onProductClick: (product: Product) => void;
 }
 
+const searchProducts = async (query: string, category: string): Promise<Product[]> => {
+  await new Promise(resolve => setTimeout(resolve, Math.random() * 300));
+
+  let result = [...products];
+
+  if (category !== 'all') {
+    result = result.filter(p => p.category === category);
+  }
+
+  if (query) {
+    result = result.filter(p =>
+      p.name.toLowerCase().includes(query.toLowerCase()) ||
+      p.description.toLowerCase().includes(query.toLowerCase())
+    );
+  }
+
+  return result;
+};
+
 export const ProductList = ({ onProductClick }: ProductListProps) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
   const [sortBy, setSortBy] = useState('name');
+  const [isLoading, setIsLoading] = useState(false);
 
   const categories = ['all', 'audio', 'wearables', 'apparel', 'home', 'accessories', 'fitness'];
 
   useEffect(() => {
-    let result = [...products];
+    setIsLoading(true);
 
-    if (selectedCategory !== 'all') {
-      result = result.filter(p => p.category === selectedCategory);
-    }
+    searchProducts(searchQuery, selectedCategory).then(result => {
+      if (sortBy === 'price-low') {
+        result.sort((a, b) => a.price - b.price);
+      } else if (sortBy === 'price-high') {
+        result.sort((a, b) => b.price - a.price);
+      } else if (sortBy === 'rating') {
+        result.sort((a, b) => b.rating - a.rating);
+      } else {
+        result.sort((a, b) => a.name.localeCompare(b.name));
+      }
 
-    if (searchQuery) {
-      result = result.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (sortBy === 'price-low') {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price-high') {
-      result.sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'rating') {
-      result.sort((a, b) => b.rating - a.rating);
-    } else {
-      result.sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    setFilteredProducts(result);
+      setFilteredProducts(result);
+      setIsLoading(false);
+    });
   }, [selectedCategory, searchQuery, sortBy]);
 
   const handleCategoryChange = (category: string) => {
@@ -119,7 +131,9 @@ export const ProductList = ({ onProductClick }: ProductListProps) => {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '24px'
+          gap: '24px',
+          opacity: isLoading ? 0.6 : 1,
+          transition: 'opacity 0.2s'
         }}
       >
         {filteredProducts.map(product => (
@@ -131,7 +145,7 @@ export const ProductList = ({ onProductClick }: ProductListProps) => {
         ))}
       </div>
 
-      {filteredProducts.length === 0 && (
+      {filteredProducts.length === 0 && !isLoading && (
         <div style={{ textAlign: 'center', padding: '48px', color: '#666' }}>
           No products found matching your criteria.
         </div>
