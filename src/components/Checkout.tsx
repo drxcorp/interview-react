@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useCartStore } from '../store/cartStore';
+import { Product } from '../data/products';
+
+interface CartItem extends Product {
+  quantity: number;
+}
 
 interface CheckoutProps {
   onClose: () => void;
@@ -7,7 +12,8 @@ interface CheckoutProps {
 
 export const Checkout = ({ onClose }: CheckoutProps) => {
   const { items, getTotal, clearCart } = useCartStore();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
+  const [cartFromStorage, setCartFromStorage] = useState<CartItem[]>([]);
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
@@ -30,6 +36,18 @@ export const Checkout = ({ onClose }: CheckoutProps) => {
     return () => {
       document.body.style.overflow = 'unset';
     };
+  }, []);
+
+  useEffect(() => {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      try {
+        const parsedCart = JSON.parse(savedCart) as CartItem[];
+        setCartFromStorage(parsedCart);
+      } catch {
+        setCartFromStorage([]);
+      }
+    }
   }, []);
 
   const validateEmail = (email: string) => {
@@ -107,6 +125,7 @@ export const Checkout = ({ onClose }: CheckoutProps) => {
 
     setTimeout(() => {
       clearCart();
+      localStorage.removeItem('cart');
       onClose();
     }, 3000);
   };
@@ -214,6 +233,15 @@ export const Checkout = ({ onClose }: CheckoutProps) => {
               style={{
                 flex: 1,
                 height: '4px',
+                backgroundColor: step >= 0 ? '#1a1a1a' : '#e5e5e5',
+                borderRadius: '2px',
+                transition: 'background-color 0.3s'
+              }}
+            />
+            <div
+              style={{
+                flex: 1,
+                height: '4px',
                 backgroundColor: step >= 1 ? '#1a1a1a' : '#e5e5e5',
                 borderRadius: '2px',
                 transition: 'background-color 0.3s'
@@ -229,6 +257,103 @@ export const Checkout = ({ onClose }: CheckoutProps) => {
               }}
             />
           </div>
+
+          {step === 0 && (
+            <div>
+              <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '24px' }}>Confirm Your Order</h2>
+              <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>
+                Please review the items in your cart before proceeding to checkout.
+              </p>
+
+              {cartFromStorage.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px', backgroundColor: '#fafafa', borderRadius: '12px' }}>
+                  <p style={{ color: '#666' }}>No items found in saved cart. Please add items to your cart first.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {cartFromStorage.map(item => (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: 'flex',
+                        gap: '16px',
+                        padding: '16px',
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '12px',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '60px',
+                          height: '60px',
+                          backgroundColor: '#f5f5f5',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          flexShrink: 0
+                        }}
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>{item.name}</h3>
+                        <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0 0' }}>
+                          Qty: {item.quantity}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </p>
+                        <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0 0' }}>
+                          ${item.price.toFixed(2)} each
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div
+                    style={{
+                      marginTop: '16px',
+                      padding: '16px',
+                      backgroundColor: '#fafafa',
+                      borderRadius: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
+                      <span style={{ color: '#666' }}>Subtotal ({cartFromStorage.reduce((sum, item) => sum + item.quantity, 0)} items)</span>
+                      <span style={{ fontWeight: 600 }}>
+                        ${cartFromStorage.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => setStep(1)}
+                disabled={cartFromStorage.length === 0}
+                style={{
+                  marginTop: '24px',
+                  width: '100%',
+                  padding: '16px',
+                  backgroundColor: cartFromStorage.length === 0 ? '#ccc' : '#1a1a1a',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  cursor: cartFromStorage.length === 0 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Continue to Shipping
+              </button>
+            </div>
+          )}
 
           {step === 1 && (
             <div>
@@ -373,23 +498,40 @@ export const Checkout = ({ onClose }: CheckoutProps) => {
                 </div>
               </div>
 
-              <button
-                onClick={handleNext}
-                style={{
-                  marginTop: '24px',
-                  width: '100%',
-                  padding: '16px',
-                  backgroundColor: '#1a1a1a',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Continue to Payment
-              </button>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button
+                  onClick={() => setStep(0)}
+                  style={{
+                    padding: '16px',
+                    backgroundColor: 'white',
+                    color: '#1a1a1a',
+                    border: '1px solid #e5e5e5',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    flex: 1
+                  }}
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleNext}
+                  style={{
+                    padding: '16px',
+                    backgroundColor: '#1a1a1a',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    flex: 2
+                  }}
+                >
+                  Continue to Payment
+                </button>
+              </div>
             </div>
           )}
 
